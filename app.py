@@ -1,143 +1,26 @@
 import os
-import re
-import time
 import secrets
-import sqlite3
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
+from config import BASE_DIR, KEY_PATTERN, DEMO_GCODES, DEFAULT_USER_SPOOLS
+from db import db_query, init_db, reset_demo_sandbox, check_and_maintain_demo
 
-DB_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
-IS_POSTGRES = bool(DB_URL)
-
-if IS_POSTGRES:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-
-SQLITE_PATH = os.environ.get("SQLITE_PATH", "/tmp/filament_studio_v4.db")
-LAST_DEMO_RESET = time.time()
-
-KEY_PATTERN = re.compile(r"^KA-[A-Z0-9]{4}-[A-Z0-9]{4}$")
-
-DEMO_GCODES = {
-    "petg_corner": {
-        "filename": "AD5M_Enclosure_Corner_v2.gx",
-        "format": "GX (FlashForge Binary)",
-        "weight_g": 64.8,
-        "length_m": 21.35,
-        "time_str": "01h 42m",
-        "time_hours": 1.7,
-        "filament_type": "PETG",
-        "layer_height": 0.2,
-        "thumbnail": None
-    },
-    "tpu_damper": {
-        "filename": "AD5M_AntiVibro_Foot_TPU95A.gcode",
-        "format": "G-CODE (Orca Slicer)",
-        "weight_g": 18.4,
-        "length_m": 6.12,
-        "time_str": "00h 48m",
-        "time_hours": 0.8,
-        "filament_type": "TPU 95A",
-        "layer_height": 0.2,
-        "thumbnail": None
-    }
-}
-
-DEFAULT_DEMO_SPOOLS = [
-    ("DemoSpool", "PETG", "Industrial White", "#e4e4e7", 1000, 660, 1200),
-    ("DemoSpool", "PLA+", "Crimson Red", "#dc2626", 1000, 320, 1350),
-    ("DemoSpool", "TPU 95A", "Cobalt Blue", "#2563eb", 500, 450, 1400),
-]
-
-DEFAULT_USER_SPOOLS = [
-    ("BestFilament", "PETG", "Carbon Black", "#27272a", 1000, 680, 1290),
-    ("eSUN", "PLA+", "Signal Orange", "#ea580c", 1000, 845, 1450),
-    ("REC", "TPU 95A", "Cobalt Blue", "#2563eb", 500, 410, 1350),
-    ("Eryone", "ASA", "Titanium Grey", "#71717a", 1000, 125, 1890),
-]
-
-
-def db_query(sql, params=(), fetch=False):
-    if IS_POSTGRES:
-        sql_pg = sql.replace("?", "%s")
-        conn = psycopg2.connect(DB_URL, cursor_factory=RealDictCursor)
-        try:
-            with conn:
-                with conn.cursor() as cur:
-                    cur.execute(sql_pg, params)
-                    if fetch:
-                        return [dict(r) for r in cur.fetchall()]
-        finally:
-            conn.close()
-    else:
-        conn = sqlite3.connect(SQLITE_PATH)
-        conn.row_factory = sqlite3.Row
-        try:
-            with conn:
-                cur = conn.execute(sql, params)
-                if fetch:
-                    return [dict(r) for r in cur.fetchall()]
-        finally:
-            conn.close()
-    return []
-
-
-def reset_demo_sandbox():
-    global LAST_DEMO_RESET
-    db_query("DELETE FROM spools WHERE workspace = 'demo'")
-    db_query("DELETE FROM print_history WHERE workspace = 'demo'")
-    for s in DEFAULT_DEMO_SPOOLS:
-        db_query("""
-            INSERT INTO spools (workspace, brand, material, color_name, color_hex, initial_weight_g, remaining_weight_g, price_rub)
-            VALUES ('demo', ?, ?, ?, ?, ?, ?, ?)
-        """, s)
-    LAST_DEMO_RESET = time.time()
-
-
-def init_db():
-    id_type = "SERIAL PRIMARY KEY" if IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
-    db_query("""
-        CREATE TABLE IF NOT EXISTS workspaces (
-            key_id TEXT PRIMARY KEY,
-            created_at TEXT NOT NULL
-        )
-    """)
-    db_query(f"""
-        CREATE TABLE IF NOT EXISTS spools (
-            id {id_type},
-            workspace TEXT NOT NULL DEFAULT 'demo',
-            brand TEXT NOT NULL,
-            material TEXT NOT NULL,
-            color_name TEXT NOT NULL,
-            color_hex TEXT NOT NULL,
-            initial_weight_g REAL NOT NULL,
-            remaining_weight_g REAL NOT NULL,
-            price_rub REAL NOT NULL
-        )
-    """)
-    db_query(f"""
-        CREATE TABLE IF NOT EXISTS print_history (
-            id {id_type},
-            workspace TEXT NOT NULL DEFAULT 'demo',
-            spool_id INTEGER NOT NULL,
-            part_name TEXT NOT NULL,
-            weight_used_g REAL NOT NULL,
-            cost_rub REAL NOT NULL,
-            created_at TEXT NOT NULL
-        )
-    """)
-    cnt = db_query("SELECT COUNT(*) as cnt FROM spools WHERE workspace = 'demo'", fetch=True)
-    if cnt and cnt[0]["cnt"] == 0:
-        reset_demo_sandbox()
-
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static")
+)
 
 try:
     init_db()
 except Exception as e:
     print("DB Init warning:", e)
+
+
+def fallback_dash(text):
+    t = str(text or "").strip()
+    return t[:40] if t else "-"
 
 
 @app.route("/")
@@ -202,10 +85,7 @@ def get_state():
     ws = request.args.get("workspace", "demo").strip().upper() or "DEMO"
     if ws == "DEMO":
         ws = "demo"
-        spools_cnt = db_query("SELECT COUNT(*) as cnt FROM spools WHERE workspace = 'demo'", fetch=True)
-        c = spools_cnt[0]["cnt"] if spools_cnt else 0
-        if c == 0 or c > 9 or (time.time() - LAST_DEMO_RESET > 1800):
-            reset_demo_sandbox()
+        check_and_maintain_demo()
     else:
         exists = db_query("SELECT key_id FROM workspaces WHERE key_id = ?", (ws,), fetch=True)
         if not exists:
@@ -229,11 +109,6 @@ def get_demo_gcode(demo_key):
     return jsonify({"status": "error", "title": "ОШИБКА ФАЙЛА", "message": "Пример не найден"}), 404
 
 
-def fallback_dash(text):
-    t = str(text or "").strip()
-    return t[:40] if t else "-"
-
-
 @app.route("/api/spools/add", methods=["POST"])
 def add_spool():
     d = request.json or {}
@@ -241,7 +116,6 @@ def add_spool():
     if ws != "demo":
         ws = ws.upper()
 
-    # Можно вводить что угодно; если пусто — автоматически ставится '-'
     brand = fallback_dash(d.get("brand"))
     color_name = fallback_dash(d.get("color_name"))
     material = fallback_dash(d.get("material"))
@@ -259,7 +133,6 @@ def add_spool():
         return jsonify({"status": "error", "title": "НЕВЕРНЫЙ ОСТАТОК", "message": f"Остаток должен быть от 0 до {init_w} г."}), 400
     if price < 0 or price > 1000000 or init_w != init_w or price != price:
         return jsonify({"status": "error", "title": "НЕВЕРНАЯ ЦЕНА", "message": "Цена катушки должна быть от 0 до 1 000 000 RUB."}), 400
-
 
     db_query("""
         INSERT INTO spools (workspace, brand, material, color_name, color_hex, initial_weight_g, remaining_weight_g, price_rub)
@@ -358,4 +231,3 @@ def undo_history(hist_id):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True, port=5000)
-
