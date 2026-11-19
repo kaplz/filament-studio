@@ -4,7 +4,7 @@
 ![Flask](https://img.shields.io/badge/Flask-3.0-black?style=flat-square&logo=flask)
 ![PostgreSQL](https://img.shields.io/badge/Neon-PostgreSQL-336791?style=flat-square&logo=postgresql)
 ![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=flat-square&logo=vercel)
-![License](https://img.shields.io/badge/License-MIT-red?style=flat-square)
+![License](https://img.shields.io/badge/License-GPLv3-blue?style=flat-square)
 
 **FILAMENT // STUDIO** — инженерная веб-система управления складом филамента, учета технологического брака и автоматического расчета себестоимости 3D-печати с поддержкой клиентского парсинга бинарных и текстовых файлов нарезки (`.gx`, `.gcode`, `.3mf`, `.ufp`, `.g`).
 
@@ -58,7 +58,7 @@ filament-studio/
 │   └── index.html          # Инженерный интерфейс в стиле Industrial Dark (Tailwind CSS)
 ├── vercel.json             # Конфигурация бессерверного деплоя Vercel
 ├── requirements.txt        # Зависимости Python
-└── LICENSE                 # Лицензия MIT
+└── LICENSE                 # Лицензия GNU GPL v3.0
 ```
 
 ---
@@ -98,5 +98,5 @@ filament-studio/
 
 ## Автор и лицензия
 
-* Разработчик: **KAPLZ** ([GitHub](https://github.com/kaplz))
-* Распространяется под лицензией [MIT License](LICENSE).
+* Разработчик: KAPLZ ([GitHub](https://github.com/kaplz))
+* Распространяется под лицензией [GNU GPL v3.0](LICENSE).
