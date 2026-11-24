@@ -66,6 +66,7 @@ filament-studio/
 ├── vercel.json                     # Конфигурация деплоя @vercel/python на Vercel
 ├── requirements.txt                # Зависимости Python
 └── LICENSE                         # Лицензия GNU GPL v3.0
+```
 
 ---
 
