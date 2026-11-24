@@ -22,6 +22,8 @@ def fallback_dash(text):
     t = str(text or "").strip()
     return t[:40] if t else "-"
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
 
 @app.route("/")
 def index():
@@ -251,6 +253,30 @@ Sitemap: https://filament.kaplz.is-a.dev/sitemap.xml"""
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory('static', 'favicon.png', mimetype='image/png')
+
+@app.route("/static/<path:filename>")
+def serve_static(filename):
+    return send_from_directory(STATIC_DIR, filename)
+
+@app.route("/favicon.ico")
+def serve_favicon():
+    return send_from_directory(STATIC_DIR, "favicon.png", mimetype="image/png")
+
+@app.route("/robots.txt")
+def serve_robots():
+    return send_from_directory(BASE_DIR, "robots.txt", mimetype="text/plain")
+
+@app.route("/sitemap.xml")
+def serve_sitemap():
+    return send_from_directory(BASE_DIR, "sitemap.xml", mimetype="application/xml")
+
+@app.route("/googleeaa5cdd1c2502258.html")
+def serve_google():
+    return send_from_directory(BASE_DIR, "googleeaa5cdd1c2502258.html")
+
+@app.route("/yandex_e14f99fc431b6a37.html")
+def serve_yandex():
+    return send_from_directory(BASE_DIR, "yandex_e14f99fc431b6a37.html")
 
 
 
