@@ -1,7 +1,7 @@
 import os
 import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 
 from config import BASE_DIR, KEY_PATTERN, DEMO_GCODES, DEFAULT_USER_SPOOLS
 from db import db_query, init_db, reset_demo_sandbox, check_and_maintain_demo
@@ -227,6 +227,27 @@ def undo_history(hist_id):
             db_query("UPDATE spools SET remaining_weight_g = ? WHERE id = ?", (restored, h["spool_id"]))
         db_query("DELETE FROM print_history WHERE id = ?", (hist_id,))
     return jsonify({"status": "success"})
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://filament.kaplz.is-a.dev/</loc>
+    <lastmod>2026-11-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>"""
+    return Response(xml, mimetype="application/xml")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    txt = """User-agent: *
+Allow: /
+Sitemap: https://filament.kaplz.is-a.dev/sitemap.xml"""
+    return Response(txt, mimetype="text/plain")
 
 
 if __name__ == "__main__":
