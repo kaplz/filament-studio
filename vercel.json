@@ -4,6 +4,11 @@
     { "src": "app.py", "use": "@vercel/python" }
   ],
   "routes": [
+    { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/robots.txt", "dest": "/robots.txt" },
+    { "src": "/sitemap.xml", "dest": "/sitemap.xml" },
+    { "src": "/googleeaa5cdd1c2502258.html", "dest": "/googleeaa5cdd1c2502258.html" },
+    { "src": "/yandex_e14f99fc431b6a37.html", "dest": "/yandex_e14f99fc431b6a37.html" },
     { "src": "/(.*)", "dest": "app.py" }
   ]
 }
