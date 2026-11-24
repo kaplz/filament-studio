@@ -1,7 +1,7 @@
 import os
 import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, send_from_directory
 
 from config import BASE_DIR, KEY_PATTERN, DEMO_GCODES, DEFAULT_USER_SPOOLS
 from db import db_query, init_db, reset_demo_sandbox, check_and_maintain_demo
@@ -241,13 +241,17 @@ def sitemap_xml():
 </urlset>"""
     return Response(xml, mimetype="application/xml")
 
-
 @app.route("/robots.txt")
 def robots_txt():
     txt = """User-agent: *
 Allow: /
 Sitemap: https://filament.kaplz.is-a.dev/sitemap.xml"""
     return Response(txt, mimetype="text/plain")
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('static', 'favicon.png', mimetype='image/png')
+
 
 
 if __name__ == "__main__":
